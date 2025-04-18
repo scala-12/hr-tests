@@ -85,21 +85,24 @@ router.get('/', validateLessonQuery, async (
           (studentsCount as string).split(',').map(Number).sort((a, b) => a - b)
           : null;
         if (sCount != null) {
-          if (sCount.length === 1) {
-            query.where("s.students_count", sCount[0]);
-            if (sCount[0] === 0) {
+          if (sCount[0] === 0) {
+            if (sCount.length === 1) {
               query.andWhere(function () {
                 this.whereNull("s.students_count").orWhere("s.students_count", 0);
               });
             } else {
-              query.where("s.students_count", sCount[0]);
+              query.andWhere(function () {
+                this.whereNull("s.students_count").orWhereBetween("s.students_count", [0, sCount[1]]);
+              });
             }
-          } else if (sCount[0] === 0) {
-            query.andWhere(function () {
-              this.whereNull("s.students_count").orWhereBetween("s.students_count", [0, sCount[1]]);
-            });
+          } else if (sCount.length === 1) {
+            query.where("s.students_count", sCount[0]);
           } else {
-            query.whereBetween("s.students_count", [sCount[0], sCount[1]]);
+            if (sCount.length === 1) {
+              query.where("s.students_count", sCount[0]);
+            } else {
+              query.whereBetween("s.students_count", [sCount[0], sCount[1]]);
+            }
           }
         }
       })
