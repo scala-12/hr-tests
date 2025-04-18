@@ -38,8 +38,8 @@ export const validateLessonQuery = (req: Request, res: Response, next: NextFunct
     if (date != null) {
         const match = (date as string).match(new RegExp(`^(${dateRegexp})(?:,(${dateRegexp}))?$`));
         if (!match || !match.slice(1, 3).every(e => {
-            const parsed = dayjs(e, "YYYY-MM-DD", true);
-            return parsed.isValid() && parsed.format("YYYY-MM-DD") === e;
+            const parsed = e != null && dayjs(e, "YYYY-MM-DD", true);
+            return !parsed || parsed.isValid() && parsed.format("YYYY-MM-DD") === e;
         })) {
             errors.push(`Параметр date должен быть одной или двумя датами в формате YYYY-MM-DD [${date}]`);
         }
