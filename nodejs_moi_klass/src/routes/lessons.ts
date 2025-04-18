@@ -19,40 +19,19 @@ router.get('/', validateLessonQuery, async (
     const perPage = Number(lessonsPerPage);
     const offset = (Number(page) - 1) * perPage;
 
-    const students2Lesson = knexLib("lesson_students")
-      .leftJoin("students", "lesson_students.student_id", "students.id")
-      .select(
-        "lesson_students.lesson_id",
-        knexLib.raw(`
-          COUNT(DISTINCT students.id)
-          FILTER (WHERE lesson_students.visit = true)::int AS visit_count`),
-        knexLib.raw(`
-          ARRAY_AGG(
-            DISTINCT JSONB_BUILD_OBJECT('id', students.id, 'name', students.name)
-          ) FILTER (WHERE students.id IS NOT NULL) AS students`
-        )
-      ).groupBy("lesson_students.lesson_id");
-
-    const teachers2Lesson = knexLib("lesson_teachers")
-      .leftJoin("teachers", "lesson_teachers.teacher_id", "teachers.id")
-      .select(
-        "lesson_teachers.lesson_id",
-        knexLib.raw(`
-          ARRAY_AGG(teachers.id) FILTER (WHERE teachers.id IS NOT NULL) AS teachers_ids`
-        )
-      ).groupBy("lesson_teachers.lesson_id");
-
     const result = await knexLib.with('students2Lesson', qb => {
       qb.select(
         'lesson_students.lesson_id',
         knexLib.raw(`
-            COUNT(DISTINCT students.id) FILTER (WHERE lesson_students.visit = true)::int AS visit_count
-          `),
+          COUNT(DISTINCT students.id) 
+          FILTER (WHERE lesson_students.visit = true)::int AS visit_count
+        `),
+        knexLib.raw(`COUNT(DISTINCT students.id) AS students_count`),
         knexLib.raw(`
-            ARRAY_AGG(
-              DISTINCT JSONB_BUILD_OBJECT('id', students.id, 'name', students.name)
-            ) FILTER (WHERE students.id IS NOT NULL) AS students
-          `)
+          ARRAY_AGG(
+            DISTINCT JSONB_BUILD_OBJECT('id', students.id, 'name', students.name)
+          ) FILTER (WHERE students.id IS NOT NULL) AS students
+        `)
       )
         .from('lesson_students')
         .leftJoin('students', 'lesson_students.student_id', 'students.id')
@@ -107,9 +86,20 @@ router.get('/', validateLessonQuery, async (
           : null;
         if (sCount != null) {
           if (sCount.length === 1) {
-            query.where("s.visit_count", sCount[0]);
+            query.where("s.students_count", sCount[0]);
+            if (sCount[0] === 0) {
+              query.andWhere(function () {
+                this.whereNull("s.students_count").orWhere("s.students_count", 0);
+              });
+            } else {
+              query.where("s.students_count", sCount[0]);
+            }
+          } else if (sCount[0] === 0) {
+            query.andWhere(function () {
+              this.whereNull("s.students_count").orWhereBetween("s.students_count", [0, sCount[1]]);
+            });
           } else {
-            query.whereBetween("s.visit_count", [sCount[0], sCount[1]]);
+            query.whereBetween("s.students_count", [sCount[0], sCount[1]]);
           }
         }
       })
