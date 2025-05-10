@@ -1,4 +1,4 @@
-package java_tinkoff;
+package task_4;
 
 import java.util.ArrayList;
 import java.util.Scanner;
